@@ -22,14 +22,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(String username, String role) {
-        return Jwts.builder()
+    public String generateToken(String username, String role, Long employeeId) {
+        var builder = Jwts.builder()
                 .subject(username)
                 .claim("role", role)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey())
-                .compact();
+                .expiration(new Date(System.currentTimeMillis() + expiration));
+        if (employeeId != null) {
+            builder.claim("employeeId", employeeId);
+        }
+        return builder.signWith(getSigningKey()).compact();
     }
 
     public String extractUsername(String token) {
