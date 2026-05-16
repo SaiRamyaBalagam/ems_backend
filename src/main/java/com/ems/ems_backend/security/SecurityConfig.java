@@ -35,17 +35,45 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        // All three roles can read everything
-                        .requestMatchers(HttpMethod.GET, "/api/employees/**", "/api/departments/**", "/api/attendance/**", "/api/leaves/**", "/api/salaries/**", "/api/dashboard/**").hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
-                        // Employees and managers can apply leave
-                        .requestMatchers(HttpMethod.POST, "/api/leaves/**").hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
-                        // Managers can approve/reject leaves
-                        .requestMatchers(HttpMethod.PUT, "/api/leaves/**").hasAnyRole("ADMIN", "MANAGER")
-                        // Only admin can create employees, departments, attendance records, salaries
-                        .requestMatchers(HttpMethod.POST, "/api/employees/**", "/api/departments/**", "/api/attendance/**", "/api/salaries/**").hasRole("ADMIN")
-                        // Only admin can update employees, departments, attendance, salaries
-                        .requestMatchers(HttpMethod.PUT, "/api/employees/**", "/api/departments/**", "/api/attendance/**", "/api/salaries/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/employees/**", "/api/departments/**", "/api/attendance/**", "/api/leaves/**", "/api/salaries/**").hasRole("ADMIN")
+
+                        // Everyone can read everything
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/employees/**", "/api/departments/**", "/api/attendance/**",
+                                "/api/leaves/**", "/api/salaries/**", "/api/dashboard/**")
+                                .hasAnyRole("ADMIN", "HR", "FINANCE", "MANAGER", "EMPLOYEE")
+
+                        // Everyone can apply leave
+                        .requestMatchers(HttpMethod.POST, "/api/leaves/**")
+                                .hasAnyRole("ADMIN", "HR", "FINANCE", "MANAGER", "EMPLOYEE")
+
+                        // Approve/reject leave — ADMIN, HR, MANAGER
+                        .requestMatchers(HttpMethod.PUT, "/api/leaves/**")
+                                .hasAnyRole("ADMIN", "HR", "MANAGER")
+
+                        // Delete leave — ADMIN only
+                        .requestMatchers(HttpMethod.DELETE, "/api/leaves/**")
+                                .hasRole("ADMIN")
+
+                        // Employees + Departments + Attendance: add/edit — ADMIN, HR, MANAGER
+                        .requestMatchers(HttpMethod.POST, "/api/employees/**", "/api/departments/**", "/api/attendance/**")
+                                .hasAnyRole("ADMIN", "HR", "MANAGER")
+                        .requestMatchers(HttpMethod.PUT, "/api/employees/**", "/api/departments/**", "/api/attendance/**")
+                                .hasAnyRole("ADMIN", "HR", "MANAGER")
+
+                        // Employees + Departments + Attendance: delete — ADMIN, HR
+                        .requestMatchers(HttpMethod.DELETE, "/api/employees/**", "/api/departments/**", "/api/attendance/**")
+                                .hasAnyRole("ADMIN", "HR")
+
+                        // Salaries: add/edit/mark paid — ADMIN, FINANCE
+                        .requestMatchers(HttpMethod.POST, "/api/salaries/**")
+                                .hasAnyRole("ADMIN", "FINANCE")
+                        .requestMatchers(HttpMethod.PUT, "/api/salaries/**")
+                                .hasAnyRole("ADMIN", "FINANCE")
+
+                        // Salaries: delete — ADMIN only
+                        .requestMatchers(HttpMethod.DELETE, "/api/salaries/**")
+                                .hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
