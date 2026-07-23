@@ -1,6 +1,7 @@
 package com.ems.ems_backend.service;
 
 import com.ems.ems_backend.event.EmployeeCreatedEvent;
+import com.ems.ems_backend.event.EmployeeDeletedEvent;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Department;
 import com.ems.ems_backend.model.Employee;
@@ -85,11 +86,21 @@ public class EmployeeService {
         return employeeRepository.save(existing);
     }
 
+    @Transactional
     public void deleteEmployee(Long id) {
         Employee employee = getEmployeeById(id);
         // Remove linked user account first to avoid FK constraint
         userRepository.findByUsername(employee.getEmail()).ifPresent(userRepository::delete);
         employeeRepository.deleteById(id);
+
+        eventPublisher.publishEvent(new EmployeeDeletedEvent(
+                employee.getId(),
+                employee.getName(),
+                employee.getEmail(),
+                employee.getDepartment() != null ? employee.getDepartment().getId() : null,
+                employee.getDepartment() != null ? employee.getDepartment().getName() : null,
+                Instant.now()
+        ));
     }
 
     private void resolveFullDepartment(Employee employee) {
