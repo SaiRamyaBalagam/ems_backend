@@ -1,5 +1,8 @@
 package com.ems.ems_backend.service;
 
+import com.ems.ems_backend.event.LeaveApplied;
+import com.ems.ems_backend.event.LeaveApproved;
+import com.ems.ems_backend.event.LeaveRejected;
 import com.ems.ems_backend.exception.ForbiddenException;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Employee;
@@ -12,8 +15,11 @@ import com.ems.ems_backend.repository.EmployeeRepository;
 import com.ems.ems_backend.repository.LeaveRequestRepository;
 import com.ems.ems_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -24,7 +30,9 @@ public class LeaveRequestService {
     private final LeaveRequestRepository leaveRequestRepository;
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
+    @Transactional
     public LeaveRequest applyLeave(Long employeeId, LocalDate startDate, LocalDate endDate,
                                    String leaveType, String reason, String username) {
 
@@ -56,7 +64,19 @@ public class LeaveRequestService {
         leaveRequest.setReason(reason);
         leaveRequest.setStatus(LeaveStatus.PENDING);
 
-        return leaveRequestRepository.save(leaveRequest);
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+
+        eventPublisher.publishEvent(new LeaveApplied(
+                saved.getId(),
+                employeeId,
+                saved.getLeaveType().name(),
+                saved.getStartDate(),
+                saved.getEndDate(),
+                saved.getReason(),
+                Instant.now()
+        ));
+
+        return saved;
     }
 
     public List<LeaveRequest> getAllLeaves() {
@@ -70,12 +90,23 @@ public class LeaveRequestService {
         return leaveRequestRepository.findByEmployeeId(employeeId);
     }
 
+    @Transactional
     public LeaveRequest updateLeaveStatus(Long id, String status) {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave request not found with id: " + id));
 
-        leaveRequest.setStatus(LeaveStatus.valueOf(status.toUpperCase()));
-        return leaveRequestRepository.save(leaveRequest);
+        LeaveStatus newStatus = LeaveStatus.valueOf(status.toUpperCase());
+        leaveRequest.setStatus(newStatus);
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+
+        Long employeeId = saved.getEmployee().getId();
+        if (newStatus == LeaveStatus.APPROVED) {
+            eventPublisher.publishEvent(new LeaveApproved(saved.getId(), employeeId, Instant.now()));
+        } else if (newStatus == LeaveStatus.REJECTED) {
+            eventPublisher.publishEvent(new LeaveRejected(saved.getId(), employeeId, Instant.now()));
+        }
+
+        return saved;
     }
 
     public void deleteLeave(Long id) {

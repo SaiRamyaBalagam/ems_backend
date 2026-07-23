@@ -1,5 +1,6 @@
 package com.ems.ems_backend.service;
 
+import com.ems.ems_backend.event.EmployeeCreatedEvent;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Department;
 import com.ems.ems_backend.model.Employee;
@@ -9,9 +10,12 @@ import com.ems.ems_backend.repository.DepartmentRepository;
 import com.ems.ems_backend.repository.EmployeeRepository;
 import com.ems.ems_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -22,7 +26,9 @@ public class EmployeeService {
     private final DepartmentRepository departmentRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
+    @Transactional
     public Employee addEmployee(Employee employee) {
         resolveFullDepartment(employee);
         Employee saved = employeeRepository.save(employee);
@@ -35,7 +41,18 @@ public class EmployeeService {
         user.setEmployee(saved);
         userRepository.save(user);
 
-        return employeeRepository.findById(saved.getId()).orElse(saved);
+        Employee full = employeeRepository.findById(saved.getId()).orElse(saved);
+
+        eventPublisher.publishEvent(new EmployeeCreatedEvent(
+                full.getId(),
+                full.getName(),
+                full.getEmail(),
+                full.getDepartment() != null ? full.getDepartment().getId() : null,
+                full.getDepartment() != null ? full.getDepartment().getName() : null,
+                Instant.now()
+        ));
+
+        return full;
     }
 
     public List<Employee> getAllEmployees() {

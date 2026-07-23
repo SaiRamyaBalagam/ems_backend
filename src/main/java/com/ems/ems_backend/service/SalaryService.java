@@ -1,6 +1,7 @@
 package com.ems.ems_backend.service;
 
 import com.ems.ems_backend.dto.SalaryResponse;
+import com.ems.ems_backend.event.SalaryPaid;
 import com.ems.ems_backend.exception.DuplicateResourceException;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Employee;
@@ -9,9 +10,12 @@ import com.ems.ems_backend.model.SalaryStatus;
 import com.ems.ems_backend.repository.EmployeeRepository;
 import com.ems.ems_backend.repository.SalaryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -20,6 +24,7 @@ public class SalaryService {
 
     private final SalaryRepository salaryRepository;
     private final EmployeeRepository employeeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public SalaryResponse addSalary(Long employeeId, BigDecimal baseSalary, BigDecimal bonus,
                                     BigDecimal deductions, int payMonth, int payYear) {
@@ -92,12 +97,27 @@ public class SalaryService {
         return new SalaryResponse(salaryRepository.save(salary));
     }
 
+    @Transactional
     public SalaryResponse updateSalaryStatus(Long id, String status) {
         Salary salary = salaryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Salary record not found with id: " + id));
 
-        salary.setStatus(SalaryStatus.valueOf(status.toUpperCase()));
-        return new SalaryResponse(salaryRepository.save(salary));
+        SalaryStatus newStatus = SalaryStatus.valueOf(status.toUpperCase());
+        salary.setStatus(newStatus);
+        Salary saved = salaryRepository.save(salary);
+
+        if (newStatus == SalaryStatus.PAID) {
+            eventPublisher.publishEvent(new SalaryPaid(
+                    saved.getId(),
+                    saved.getEmployee().getId(),
+                    saved.getNetSalary(),
+                    saved.getPayMonth(),
+                    saved.getPayYear(),
+                    Instant.now()
+            ));
+        }
+
+        return new SalaryResponse(saved);
     }
 
     public void deleteSalary(Long id) {
