@@ -3,6 +3,7 @@ package com.ems.ems_backend.event.notification;
 import com.ems.ems_backend.event.LeaveApplied;
 import com.ems.ems_backend.event.LeaveApproved;
 import com.ems.ems_backend.event.LeaveRejected;
+import com.ems.ems_backend.event.LeaveDeleted;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -32,5 +33,10 @@ public class LeaveNotificationConsumer {
     @KafkaHandler
     public void onLeaveRejected(LeaveRejected event) {
         log.info("[notification-service] Notify employeeId={}: leave {} rejected", event.employeeId(), event.leaveId());
+    }
+
+    @KafkaHandler
+    public void onLeaveDeleted(LeaveDeleted event) {
+        log.info("[notification-service] Notify employeeId={}: leave {} deleted", event.employeeId(), event.leaveId());
     }
 }

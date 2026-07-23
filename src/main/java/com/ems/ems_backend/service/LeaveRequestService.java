@@ -2,6 +2,7 @@ package com.ems.ems_backend.service;
 
 import com.ems.ems_backend.event.LeaveApplied;
 import com.ems.ems_backend.event.LeaveApproved;
+import com.ems.ems_backend.event.LeaveDeleted;
 import com.ems.ems_backend.event.LeaveRejected;
 import com.ems.ems_backend.exception.ForbiddenException;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
@@ -109,10 +110,16 @@ public class LeaveRequestService {
         return saved;
     }
 
+    @Transactional
     public void deleteLeave(Long id) {
-        if (!leaveRequestRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Leave request not found with id: " + id);
-        }
+        LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Leave request not found with id: " + id));
         leaveRequestRepository.deleteById(id);
+
+        eventPublisher.publishEvent(new LeaveDeleted(
+                leaveRequest.getId(),
+                leaveRequest.getEmployee().getId(),
+                Instant.now()
+        ));
     }
 }

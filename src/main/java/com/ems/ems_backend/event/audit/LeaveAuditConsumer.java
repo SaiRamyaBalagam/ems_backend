@@ -3,6 +3,7 @@ package com.ems.ems_backend.event.audit;
 import com.ems.ems_backend.event.LeaveApplied;
 import com.ems.ems_backend.event.LeaveApproved;
 import com.ems.ems_backend.event.LeaveRejected;
+import com.ems.ems_backend.event.LeaveDeleted;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,11 @@ public class LeaveAuditConsumer {
 
     @KafkaHandler
     public void onLeaveRejected(LeaveRejected event) throws Exception {
+        record(event.employeeId(), event.occurredAt(), event);
+    }
+
+    @KafkaHandler
+    public void onLeaveDeleted(LeaveDeleted event) throws Exception {
         record(event.employeeId(), event.occurredAt(), event);
     }
 
