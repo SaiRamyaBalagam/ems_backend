@@ -1,6 +1,7 @@
 package com.ems.ems_backend.service;
 
 import com.ems.ems_backend.dto.SalaryResponse;
+import com.ems.ems_backend.event.SalaryDeleted;
 import com.ems.ems_backend.event.SalaryPaid;
 import com.ems.ems_backend.exception.DuplicateResourceException;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
@@ -120,10 +121,19 @@ public class SalaryService {
         return new SalaryResponse(saved);
     }
 
+    @Transactional
     public void deleteSalary(Long id) {
-        if (!salaryRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Salary record not found with id: " + id);
-        }
+        Salary salary = salaryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Salary record not found with id: " + id));
         salaryRepository.deleteById(id);
+
+        eventPublisher.publishEvent(new SalaryDeleted(
+                salary.getId(),
+                salary.getEmployee().getId(),
+                salary.getNetSalary(),
+                salary.getPayMonth(),
+                salary.getPayYear(),
+                Instant.now()
+        ));
     }
 }
