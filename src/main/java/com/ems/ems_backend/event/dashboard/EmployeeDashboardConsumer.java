@@ -27,14 +27,14 @@ public class EmployeeDashboardConsumer {
 
     @KafkaHandler
     public void onEmployeeCreated(EmployeeCreatedEvent event) {
-        long headcount = employeeRepository.count();
+        long headcount = employeeRepository.countByActiveTrue();
         log.info("[dashboard-service] Headcount now {} (latest hire: employeeId={}, {})",
                 headcount, event.employeeId(), event.name());
     }
 
     @KafkaHandler
     public void onEmployeeDeleted(EmployeeDeletedEvent event) {
-        long headcount = employeeRepository.count();
+        long headcount = employeeRepository.countByActiveTrue();
         log.info("[dashboard-service] Headcount now {} (departed: employeeId={}, {})",
                 headcount, event.employeeId(), event.name());
     }

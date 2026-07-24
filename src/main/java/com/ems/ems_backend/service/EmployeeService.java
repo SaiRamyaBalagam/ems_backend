@@ -57,7 +57,7 @@ public class EmployeeService {
     }
 
     public List<Employee> getAllEmployees() {
-        return employeeRepository.findAll();
+        return employeeRepository.findByActiveTrue();
     }
 
     public Employee getEmployeeById(Long id) {
@@ -89,9 +89,16 @@ public class EmployeeService {
     @Transactional
     public void deleteEmployee(Long id) {
         Employee employee = getEmployeeById(id);
+
+        employee.setActive(false);
+        employeeRepository.save(employee);
+
         // Remove linked user account first to avoid FK constraint
-        userRepository.findByUsername(employee.getEmail()).ifPresent(userRepository::delete);
-        employeeRepository.deleteById(id);
+        userRepository.findByUsername(employee.getEmail())
+                .ifPresent(user -> {
+                    user.setEnabled(false);
+                    userRepository.save(user);
+                        });
 
         eventPublisher.publishEvent(new EmployeeDeletedEvent(
                 employee.getId(),

@@ -24,6 +24,9 @@ public class Employee {
     @JoinColumn(name = "department_id")
     private Department department;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean active = true;
+
     private String position;
     private Double salary;
 }
