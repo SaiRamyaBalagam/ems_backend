@@ -4,6 +4,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -41,8 +42,8 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+    @ExceptionHandler({BadCredentialsException.class, DisabledException.class})
+    public ResponseEntity<ErrorResponse> handleAuthFailure(Exception ex) {
         ErrorResponse error = new ErrorResponse(401, "Invalid username or password");
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
