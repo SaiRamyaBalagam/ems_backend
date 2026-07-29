@@ -26,6 +26,11 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeService.getAllEmployees());
     }
 
+    @GetMapping("/inactive")
+    public ResponseEntity<List<Employee>> getInactiveEmployees() {
+        return ResponseEntity.ok(employeeService.getInactiveEmployees());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Employee> getEmployeeById(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.getEmployeeById(id));

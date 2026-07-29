@@ -60,6 +60,8 @@ public class EmployeeService {
         return employeeRepository.findByActiveTrue();
     }
 
+    public List<Employee> getInactiveEmployees() { return employeeRepository.findByActiveFalse(); }
+
     public Employee getEmployeeById(Long id) {
         return employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
