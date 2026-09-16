@@ -1,14 +1,20 @@
 package com.ems.ems_backend.service;
 
+import com.ems.ems_backend.event.AttendanceDeleted;
+import com.ems.ems_backend.event.AttendanceMarked;
+import com.ems.ems_backend.event.AttendanceUpdated;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Attendance;
 import com.ems.ems_backend.model.Employee;
 import com.ems.ems_backend.repository.AttendanceRepository;
 import com.ems.ems_backend.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -19,7 +25,9 @@ public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
+    @Transactional
     public Attendance markAttendance(Long employeeId, LocalDate date, String status,
                                      LocalTime checkInTime, LocalTime checkOutTime) {
         Employee employee = employeeRepository.findById(employeeId)
@@ -37,7 +45,12 @@ public class AttendanceService {
         attendance.setCheckInTime(checkInTime);
         attendance.setCheckOutTime(checkOutTime);
 
-        return attendanceRepository.save(attendance);
+        Attendance saved = attendanceRepository.save(attendance);
+
+        eventPublisher.publishEvent(new AttendanceMarked(
+                saved.getId(), employeeId, saved.getDate(), saved.getStatus().name(), Instant.now()));
+
+        return saved;
     }
 
     public List<Attendance> getAllAttendance() {
@@ -63,6 +76,7 @@ public class AttendanceService {
         return attendanceRepository.findByEmployeeIdAndDateBetween(employeeId, start, end);
     }
 
+    @Transactional
     public Attendance updateAttendance(Long id, String status, LocalTime checkInTime, LocalTime checkOutTime) {
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found with id: " + id));
@@ -70,13 +84,22 @@ public class AttendanceService {
         attendance.setStatus(com.ems.ems_backend.model.AttendanceStatus.valueOf(status.toUpperCase()));
         if (checkInTime != null) attendance.setCheckInTime(checkInTime);
         if (checkOutTime != null) attendance.setCheckOutTime(checkOutTime);
-        return attendanceRepository.save(attendance);
+        Attendance saved = attendanceRepository.save(attendance);
+
+        eventPublisher.publishEvent(new AttendanceUpdated(
+                saved.getId(), saved.getEmployee().getId(), saved.getDate(), saved.getStatus().name(), Instant.now()));
+
+        return saved;
     }
 
+    @Transactional
     public void deleteAttendance(Long id) {
-        if (!attendanceRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Attendance record not found with id: " + id);
-        }
+        Attendance attendance = attendanceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found with id: " + id));
+
+        Long employeeId = attendance.getEmployee().getId();
         attendanceRepository.deleteById(id);
+
+        eventPublisher.publishEvent(new AttendanceDeleted(id, employeeId, Instant.now()));
     }
 }
