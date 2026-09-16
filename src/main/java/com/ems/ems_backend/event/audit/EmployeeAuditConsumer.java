@@ -2,6 +2,7 @@ package com.ems.ems_backend.event.audit;
 
 import com.ems.ems_backend.event.EmployeeCreatedEvent;
 import com.ems.ems_backend.event.EmployeeDeletedEvent;
+import com.ems.ems_backend.event.EmployeeReactivatedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,11 @@ public class EmployeeAuditConsumer {
 
     @KafkaHandler
     public void onEmployeeDeleted(EmployeeDeletedEvent event) throws Exception {
+        record(event.employeeId(), event.occurredAt(), event);
+    }
+
+    @KafkaHandler
+    public void onEmployeeReactivated(EmployeeReactivatedEvent event) throws Exception {
         record(event.employeeId(), event.occurredAt(), event);
     }
 

@@ -46,4 +46,10 @@ public class EmployeeController {
         employeeService.deleteEmployee(id);
         return ResponseEntity.ok("Employee deleted successfully");
     }
+
+    @PutMapping("/{id}/reactivate")
+    public ResponseEntity<String> reactivateEmployee(@PathVariable Long id) {
+        employeeService.reactivateEmployee(id);
+        return ResponseEntity.ok("Employee reactivated Successfully");
+    }
 }

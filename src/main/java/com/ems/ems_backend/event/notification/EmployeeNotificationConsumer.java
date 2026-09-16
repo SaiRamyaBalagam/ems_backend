@@ -2,6 +2,7 @@ package com.ems.ems_backend.event.notification;
 
 import com.ems.ems_backend.event.EmployeeCreatedEvent;
 import com.ems.ems_backend.event.EmployeeDeletedEvent;
+import com.ems.ems_backend.event.EmployeeReactivatedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -30,6 +31,12 @@ public class EmployeeNotificationConsumer {
     @KafkaHandler
     public void onEmployeeDeleted(EmployeeDeletedEvent event) {
         log.info("[notification-service] Offboarding notice for {} <{}> (employeeId={}, dept={})",
+                event.name(), event.email(), event.employeeId(), event.departmentName());
+    }
+
+    @KafkaHandler
+    public void onEmployeeReactivated(EmployeeReactivatedEvent event) {
+        log.info("[notification-service] Welcome-back notice for {} <{}> (employeeId={}, dept={})",
                 event.name(), event.email(), event.employeeId(), event.departmentName());
     }
 }

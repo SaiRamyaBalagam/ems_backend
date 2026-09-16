@@ -2,6 +2,7 @@ package com.ems.ems_backend.service;
 
 import com.ems.ems_backend.event.EmployeeCreatedEvent;
 import com.ems.ems_backend.event.EmployeeDeletedEvent;
+import com.ems.ems_backend.event.EmployeeReactivatedEvent;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Department;
 import com.ems.ems_backend.model.Employee;
@@ -103,6 +104,29 @@ public class EmployeeService {
                         });
 
         eventPublisher.publishEvent(new EmployeeDeletedEvent(
+                employee.getId(),
+                employee.getName(),
+                employee.getEmail(),
+                employee.getDepartment() != null ? employee.getDepartment().getId() : null,
+                employee.getDepartment() != null ? employee.getDepartment().getName() : null,
+                Instant.now()
+        ));
+    }
+
+    @Transactional
+    public void reactivateEmployee(Long id) {
+        Employee employee = getEmployeeById(id);
+
+        employee.setActive(true);
+        employeeRepository.save(employee);
+
+        userRepository.findByUsername(employee.getEmail())
+                .ifPresent(user -> {
+                    user.setEnabled(true);
+                    userRepository.save(user);
+                });
+
+        eventPublisher.publishEvent(new EmployeeReactivatedEvent(
                 employee.getId(),
                 employee.getName(),
                 employee.getEmail(),

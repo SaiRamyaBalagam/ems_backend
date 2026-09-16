@@ -2,6 +2,7 @@ package com.ems.ems_backend.event.dashboard;
 
 import com.ems.ems_backend.event.EmployeeCreatedEvent;
 import com.ems.ems_backend.event.EmployeeDeletedEvent;
+import com.ems.ems_backend.event.EmployeeReactivatedEvent;
 import com.ems.ems_backend.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,13 @@ public class EmployeeDashboardConsumer {
     public void onEmployeeDeleted(EmployeeDeletedEvent event) {
         long headcount = employeeRepository.countByActiveTrue();
         log.info("[dashboard-service] Headcount now {} (departed: employeeId={}, {})",
+                headcount, event.employeeId(), event.name());
+    }
+
+    @KafkaHandler
+    public void onEmployeeReactivated(EmployeeReactivatedEvent event) {
+        long headcount = employeeRepository.countByActiveTrue();
+        log.info("[dashboard-service] Headcount now {} (rejoined: employeeId={}, {})",
                 headcount, event.employeeId(), event.name());
     }
 }
