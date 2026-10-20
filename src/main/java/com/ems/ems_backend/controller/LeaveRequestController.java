@@ -45,8 +45,9 @@ public class LeaveRequestController {
 
     @PutMapping("/{id}/status")
     public ResponseEntity<LeaveRequest> updateLeaveStatus(@PathVariable Long id,
-                                                          @RequestBody LeaveStatusRequest request) {
-        return ResponseEntity.ok(leaveRequestService.updateLeaveStatus(id, request.getStatus()));
+                                                          @RequestBody LeaveStatusRequest request,
+                                                          Authentication authentication) {
+        return ResponseEntity.ok(leaveRequestService.updateLeaveStatus(id, request.getStatus(), authentication.getName()));
     }
 
     @DeleteMapping("/{id}")

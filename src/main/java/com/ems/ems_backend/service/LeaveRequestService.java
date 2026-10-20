@@ -40,8 +40,9 @@ public class LeaveRequestService {
         User requestingUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
-        // EMPLOYEE can only apply leave for themselves
-        if (requestingUser.getRole() == Role.EMPLOYEE) {
+        // EMPLOYEE and TEAM_LEAD can only apply leave for themselves — filing leave
+        // isn't a "manage my team" action, it's a personal request
+        if (requestingUser.getRole() == Role.EMPLOYEE || requestingUser.getRole() == Role.TEAM_LEAD) {
             if (requestingUser.getEmployee() == null) {
                 throw new ForbiddenException("Your user account is not linked to an employee record. Contact admin.");
             }
@@ -92,9 +93,29 @@ public class LeaveRequestService {
     }
 
     @Transactional
-    public LeaveRequest updateLeaveStatus(Long id, String status) {
+    public LeaveRequest updateLeaveStatus(Long id, String status, String username) {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave request not found with id: " + id));
+
+        User requestingUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        // TEAM_LEAD can only approve/reject leave for employees in their own department
+        if (requestingUser.getRole() == Role.TEAM_LEAD) {
+            Long teamLeadDeptId = requestingUser.getEmployee() != null && requestingUser.getEmployee().getDepartment() != null
+                    ? requestingUser.getEmployee().getDepartment().getId()
+                    : null;
+            Long leaveDeptId = leaveRequest.getEmployee().getDepartment() != null
+                    ? leaveRequest.getEmployee().getDepartment().getId()
+                    : null;
+
+            if (teamLeadDeptId == null) {
+                throw new ForbiddenException("Your account isn't assigned to a department. Contact admin.");
+            }
+            if (!teamLeadDeptId.equals(leaveDeptId)) {
+                throw new ForbiddenException("You can only review leave requests for employees in your own department");
+            }
+        }
 
         LeaveStatus newStatus = LeaveStatus.valueOf(status.toUpperCase());
         leaveRequest.setStatus(newStatus);

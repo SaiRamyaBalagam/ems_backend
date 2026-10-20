@@ -6,6 +6,7 @@ import com.ems.ems_backend.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,10 +19,11 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping
-    public ResponseEntity<Attendance> markAttendance(@RequestBody AttendanceRequest request) {
+    public ResponseEntity<Attendance> markAttendance(@RequestBody AttendanceRequest request,
+                                                     Authentication authentication) {
         Attendance attendance = attendanceService.markAttendance(
                 request.getEmployeeId(), request.getDate(), request.getStatus(),
-                request.getCheckInTime(), request.getCheckOutTime());
+                request.getCheckInTime(), request.getCheckOutTime(), authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(attendance);
     }
 
@@ -45,9 +47,11 @@ public class AttendanceController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Attendance> updateAttendance(@PathVariable Long id,
-                                                       @RequestBody AttendanceRequest request) {
+                                                       @RequestBody AttendanceRequest request,
+                                                       Authentication authentication) {
         return ResponseEntity.ok(attendanceService.updateAttendance(
-                id, request.getStatus(), request.getCheckInTime(), request.getCheckOutTime()));
+                id, request.getStatus(), request.getCheckInTime(), request.getCheckOutTime(),
+                authentication.getName()));
     }
 
     @DeleteMapping("/{id}")

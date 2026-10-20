@@ -5,6 +5,7 @@ import com.ems.ems_backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,8 +18,8 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @PostMapping
-    public ResponseEntity<Employee> addEmployee(@RequestBody Employee employee) {
-        return new ResponseEntity<>(employeeService.addEmployee(employee), HttpStatus.CREATED);
+    public ResponseEntity<Employee> addEmployee(@RequestBody Employee employee, Authentication authentication) {
+        return new ResponseEntity<>(employeeService.addEmployee(employee, authentication.getName()), HttpStatus.CREATED);
     }
 
     @GetMapping
@@ -37,8 +38,9 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Employee> updateEmployee(@PathVariable Long id, @RequestBody Employee employee) {
-        return ResponseEntity.ok(employeeService.updateEmployee(id, employee));
+    public ResponseEntity<Employee> updateEmployee(@PathVariable Long id, @RequestBody Employee employee,
+                                                   Authentication authentication) {
+        return ResponseEntity.ok(employeeService.updateEmployee(id, employee, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
@@ -48,8 +50,8 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}/reactivate")
-    public ResponseEntity<String> reactivateEmployee(@PathVariable Long id) {
-        employeeService.reactivateEmployee(id);
+    public ResponseEntity<String> reactivateEmployee(@PathVariable Long id, Authentication authentication) {
+        employeeService.reactivateEmployee(id, authentication.getName());
         return ResponseEntity.ok("Employee reactivated Successfully");
     }
 }
