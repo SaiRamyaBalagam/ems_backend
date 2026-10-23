@@ -70,9 +70,13 @@ public class EmployeeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
     }
 
+    @Transactional
     public Employee updateEmployee(Long id, Employee updatedEmployee, String username) {
         Employee existing = getEmployeeById(id);
         enforceDepartmentScope(username, existing.getDepartment());
+        resolveFullDepartment(updatedEmployee);
+        enforceDepartmentScope(username, updatedEmployee.getDepartment());
+        
         existing.setName(updatedEmployee.getName());
         existing.setPosition(updatedEmployee.getPosition());
         existing.setSalary(updatedEmployee.getSalary());
@@ -86,8 +90,6 @@ public class EmployeeService {
             existing.setEmail(updatedEmployee.getEmail());
         }
 
-        resolveFullDepartment(updatedEmployee);
-        enforceDepartmentScope(username, updatedEmployee.getDepartment());
         existing.setDepartment(updatedEmployee.getDepartment());
 
         return employeeRepository.save(existing);
