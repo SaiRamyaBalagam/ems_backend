@@ -3,11 +3,15 @@ package com.ems.ems_backend.service;
 import com.ems.ems_backend.event.AttendanceDeleted;
 import com.ems.ems_backend.event.AttendanceMarked;
 import com.ems.ems_backend.event.AttendanceUpdated;
+import com.ems.ems_backend.exception.ForbiddenException;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Attendance;
 import com.ems.ems_backend.model.Employee;
+import com.ems.ems_backend.model.Role;
+import com.ems.ems_backend.model.User;
 import com.ems.ems_backend.repository.AttendanceRepository;
 import com.ems.ems_backend.repository.EmployeeRepository;
+import com.ems.ems_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,13 +29,15 @@ public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
+    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Attendance markAttendance(Long employeeId, LocalDate date, String status,
-                                     LocalTime checkInTime, LocalTime checkOutTime) {
+                                     LocalTime checkInTime, LocalTime checkOutTime, String username) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+        enforceDepartmentScope(username, employee);
 
         if (attendanceRepository.findByEmployeeIdAndDate(employeeId, date).isPresent()) {
             throw new DataIntegrityViolationException(
@@ -77,9 +83,11 @@ public class AttendanceService {
     }
 
     @Transactional
-    public Attendance updateAttendance(Long id, String status, LocalTime checkInTime, LocalTime checkOutTime) {
+    public Attendance updateAttendance(Long id, String status, LocalTime checkInTime, LocalTime checkOutTime,
+                                       String username) {
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found with id: " + id));
+        enforceDepartmentScope(username, attendance.getEmployee());
 
         attendance.setStatus(com.ems.ems_backend.model.AttendanceStatus.valueOf(status.toUpperCase()));
         if (checkInTime != null) attendance.setCheckInTime(checkInTime);
@@ -101,5 +109,31 @@ public class AttendanceService {
         attendanceRepository.deleteById(id);
 
         eventPublisher.publishEvent(new AttendanceDeleted(id, employeeId, Instant.now()));
+    }
+
+    /**
+     * TEAM_LEAD can only mark/update attendance for employees within their own
+     * department. Every other role manages company-wide, unaffected by this check.
+     */
+    private void enforceDepartmentScope(String username, Employee targetEmployee) {
+        User requestingUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        if (requestingUser.getRole() != Role.TEAM_LEAD) {
+            return;
+        }
+
+        Long teamLeadDeptId = requestingUser.getEmployee() != null && requestingUser.getEmployee().getDepartment() != null
+                ? requestingUser.getEmployee().getDepartment().getId()
+                : null;
+
+        if (teamLeadDeptId == null) {
+            throw new ForbiddenException("Your account isn't assigned to a department. Contact admin.");
+        }
+
+        Long targetDeptId = targetEmployee.getDepartment() != null ? targetEmployee.getDepartment().getId() : null;
+        if (!teamLeadDeptId.equals(targetDeptId)) {
+            throw new ForbiddenException("You can only manage attendance for employees in your own department");
+        }
     }
 }

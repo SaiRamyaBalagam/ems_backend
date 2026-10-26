@@ -3,6 +3,7 @@ package com.ems.ems_backend.service;
 import com.ems.ems_backend.event.EmployeeCreatedEvent;
 import com.ems.ems_backend.event.EmployeeDeletedEvent;
 import com.ems.ems_backend.event.EmployeeReactivatedEvent;
+import com.ems.ems_backend.exception.ForbiddenException;
 import com.ems.ems_backend.exception.ResourceNotFoundException;
 import com.ems.ems_backend.model.Department;
 import com.ems.ems_backend.model.Employee;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -31,8 +33,10 @@ public class EmployeeService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public Employee addEmployee(Employee employee) {
+    public Employee addEmployee(Employee employee, String username) {
         resolveFullDepartment(employee);
+        enforceDepartmentScope(username, employee.getDepartment());
+        enforceSalaryRestriction(username, null, employee.getSalary());
         Employee saved = employeeRepository.save(employee);
 
         // Auto-create a login account for the new employee
@@ -68,8 +72,14 @@ public class EmployeeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
     }
 
-    public Employee updateEmployee(Long id, Employee updatedEmployee) {
+    @Transactional
+    public Employee updateEmployee(Long id, Employee updatedEmployee, String username) {
         Employee existing = getEmployeeById(id);
+        enforceDepartmentScope(username, existing.getDepartment());
+        resolveFullDepartment(updatedEmployee);
+        enforceDepartmentScope(username, updatedEmployee.getDepartment());
+        enforceSalaryRestriction(username, existing.getSalary(), updatedEmployee.getSalary());
+
         existing.setName(updatedEmployee.getName());
         existing.setPosition(updatedEmployee.getPosition());
         existing.setSalary(updatedEmployee.getSalary());
@@ -83,7 +93,6 @@ public class EmployeeService {
             existing.setEmail(updatedEmployee.getEmail());
         }
 
-        resolveFullDepartment(updatedEmployee);
         existing.setDepartment(updatedEmployee.getDepartment());
 
         return employeeRepository.save(existing);
@@ -114,8 +123,9 @@ public class EmployeeService {
     }
 
     @Transactional
-    public void reactivateEmployee(Long id) {
+    public void reactivateEmployee(Long id, String username) {
         Employee employee = getEmployeeById(id);
+        enforceDepartmentScope(username, employee.getDepartment());
 
         employee.setActive(true);
         employeeRepository.save(employee);
@@ -136,12 +146,50 @@ public class EmployeeService {
         ));
     }
 
+    /**
+     * TEAM_LEAD can only add/edit/reactivate employees within their own department.
+     * Every other role manages company-wide, unaffected by this check.
+     */
+    private void enforceDepartmentScope(String username, Department targetDepartment) {
+        User requestingUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        if (requestingUser.getRole() != Role.TEAM_LEAD) {
+            return;
+        }
+
+        Long teamLeadDeptId = requestingUser.getEmployee() != null && requestingUser.getEmployee().getDepartment() != null
+                ? requestingUser.getEmployee().getDepartment().getId()
+                : null;
+
+        if (teamLeadDeptId == null) {
+            throw new ForbiddenException("Your account isn't assigned to a department. Contact admin.");
+        }
+
+        if (targetDepartment == null || !teamLeadDeptId.equals(targetDepartment.getId())) {
+            throw new ForbiddenException("You can only manage employees in your own department");
+        }
+    }
+
     private void resolveFullDepartment(Employee employee) {
         if (employee.getDepartment() != null && employee.getDepartment().getId() != null) {
             Long deptId = employee.getDepartment().getId();
             Department fullDept = departmentRepository.findById(deptId)
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + deptId));
             employee.setDepartment(fullDept);
+        }
+    }
+
+    private void enforceSalaryRestriction(String username, Double oldSalary, Double updatedSalary){
+        if(Objects.equals(oldSalary, updatedSalary)){
+            return;
+        }
+
+        User requestingUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        if (requestingUser.getRole() == Role.TEAM_LEAD) {
+            throw new ForbiddenException("Team Leads cannot set or change salaries");
         }
     }
 }

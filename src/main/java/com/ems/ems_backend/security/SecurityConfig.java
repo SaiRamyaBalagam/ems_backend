@@ -40,25 +40,34 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/employees/**", "/api/departments/**", "/api/attendance/**",
                                 "/api/leaves/**", "/api/salaries/**", "/api/dashboard/**")
-                                .hasAnyRole("ADMIN", "HR", "FINANCE", "MANAGER", "EMPLOYEE")
+                                .hasAnyRole("ADMIN", "HR", "FINANCE", "MANAGER", "TEAM_LEAD", "EMPLOYEE")
 
                         // Everyone can apply leave
                         .requestMatchers(HttpMethod.POST, "/api/leaves/**")
-                                .hasAnyRole("ADMIN", "HR", "FINANCE", "MANAGER", "EMPLOYEE")
+                                .hasAnyRole("ADMIN", "HR", "FINANCE", "MANAGER", "TEAM_LEAD", "EMPLOYEE")
 
-                        // Approve/reject leave — ADMIN, HR, MANAGER
+                        // Approve/reject leave — ADMIN, HR, MANAGER, TEAM_LEAD (TEAM_LEAD scoped to
+                        // their own department, enforced in LeaveRequestService)
                         .requestMatchers(HttpMethod.PUT, "/api/leaves/**")
-                                .hasAnyRole("ADMIN", "HR", "MANAGER")
+                                .hasAnyRole("ADMIN", "HR", "MANAGER", "TEAM_LEAD")
 
                         // Delete leave — ADMIN only
                         .requestMatchers(HttpMethod.DELETE, "/api/leaves/**")
                                 .hasRole("ADMIN")
 
-                        // Employees + Departments + Attendance: add/edit — ADMIN, HR, MANAGER
-                        .requestMatchers(HttpMethod.POST, "/api/employees/**", "/api/departments/**", "/api/attendance/**")
+                        // Departments: add/edit — ADMIN, HR, MANAGER only (TEAM_LEAD manages people,
+                        // not the org structure)
+                        .requestMatchers(HttpMethod.POST, "/api/departments/**")
                                 .hasAnyRole("ADMIN", "HR", "MANAGER")
-                        .requestMatchers(HttpMethod.PUT, "/api/employees/**", "/api/departments/**", "/api/attendance/**")
+                        .requestMatchers(HttpMethod.PUT, "/api/departments/**")
                                 .hasAnyRole("ADMIN", "HR", "MANAGER")
+
+                        // Employees + Attendance: add/edit — ADMIN, HR, MANAGER, TEAM_LEAD (TEAM_LEAD
+                        // scoped to their own department, enforced in EmployeeService/AttendanceService)
+                        .requestMatchers(HttpMethod.POST, "/api/employees/**", "/api/attendance/**")
+                                .hasAnyRole("ADMIN", "HR", "MANAGER", "TEAM_LEAD")
+                        .requestMatchers(HttpMethod.PUT, "/api/employees/**", "/api/attendance/**")
+                                .hasAnyRole("ADMIN", "HR", "MANAGER", "TEAM_LEAD")
 
                         // Employees + Departments + Attendance: delete — ADMIN, HR
                         .requestMatchers(HttpMethod.DELETE, "/api/employees/**", "/api/departments/**", "/api/attendance/**")
