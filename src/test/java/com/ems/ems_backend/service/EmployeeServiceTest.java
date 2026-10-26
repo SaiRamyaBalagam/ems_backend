@@ -106,6 +106,21 @@ class EmployeeServiceTest {
         assertDoesNotThrow(() -> employeeService.updateEmployee(7L, updated, "lead@ems.com"));
     }
 
+    @Test
+    void updateEmployee_throwsForbidden_whenTeamLeadEditsOtherDepartment() {
+        Department sales = new Department();
+        sales.setId(2L);
+        existing.setDepartment(sales);
+        Employee updated = requestFor(75000.0);
+
+        when(employeeRepository.findById(7L)).thenReturn(Optional.of(existing));
+        when(userRepository.findByUsername("lead@ems.com")).thenReturn(Optional.of(teamLead));
+
+        // Act + Assert
+        assertThrows(ForbiddenException.class,
+                () -> employeeService.updateEmployee(7L, updated, "lead@ems.com"));
+    }
+
     // builds the request body: same department, same email, given salary
     private Employee requestFor(Double salary) {
         Department requestedDept = new Department();
