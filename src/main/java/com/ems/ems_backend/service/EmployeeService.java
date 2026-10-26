@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +36,7 @@ public class EmployeeService {
     public Employee addEmployee(Employee employee, String username) {
         resolveFullDepartment(employee);
         enforceDepartmentScope(username, employee.getDepartment());
+        enforceSalaryRestriction(username, null, employee.getSalary());
         Employee saved = employeeRepository.save(employee);
 
         // Auto-create a login account for the new employee
@@ -76,7 +78,8 @@ public class EmployeeService {
         enforceDepartmentScope(username, existing.getDepartment());
         resolveFullDepartment(updatedEmployee);
         enforceDepartmentScope(username, updatedEmployee.getDepartment());
-        
+        enforceSalaryRestriction(username, existing.getSalary(), updatedEmployee.getSalary());
+
         existing.setName(updatedEmployee.getName());
         existing.setPosition(updatedEmployee.getPosition());
         existing.setSalary(updatedEmployee.getSalary());
@@ -174,6 +177,19 @@ public class EmployeeService {
             Department fullDept = departmentRepository.findById(deptId)
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + deptId));
             employee.setDepartment(fullDept);
+        }
+    }
+
+    private void enforceSalaryRestriction(String username, Double oldSalary, Double updatedSalary){
+        if(Objects.equals(oldSalary, updatedSalary)){
+            return;
+        }
+
+        User requestingUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        if (requestingUser.getRole() == Role.TEAM_LEAD) {
+            throw new ForbiddenException("Team Leads cannot set or change salaries");
         }
     }
 }
