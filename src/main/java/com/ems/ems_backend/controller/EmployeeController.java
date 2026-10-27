@@ -3,6 +3,9 @@ package com.ems.ems_backend.controller;
 import com.ems.ems_backend.model.Employee;
 import com.ems.ems_backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,6 +28,12 @@ public class EmployeeController {
     @GetMapping
     public ResponseEntity<List<Employee>> getAllEmployees() {
         return ResponseEntity.ok(employeeService.getAllEmployees());
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<Page<Employee>> getActiveEmployeesPaged(
+                @PageableDefault(size = 20, sort = {"name", "id"}) Pageable pageable) {
+        return ResponseEntity.ok(employeeService.getActiveEmployees(pageable));
     }
 
     @GetMapping("/inactive")
