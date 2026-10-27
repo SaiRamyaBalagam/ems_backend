@@ -9,13 +9,19 @@ import com.ems.ems_backend.model.User;
 import com.ems.ems_backend.repository.DepartmentRepository;
 import com.ems.ems_backend.repository.EmployeeRepository;
 import com.ems.ems_backend.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.querydsl.QPageRequest;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -119,6 +125,30 @@ class EmployeeServiceTest {
         // Act + Assert
         assertThrows(ForbiddenException.class,
                 () -> employeeService.updateEmployee(7L, updated, "lead@ems.com"));
+    }
+    
+    @Test
+    void getActiveEmployees_returnsPageFromRepository() {
+        Pageable pageable = PageRequest.of(0,2);
+
+        Employee employee1 = new Employee();
+        employee1.setName("Ram");
+
+        Employee employee2 = new Employee();
+        employee2.setName("Priya");
+
+        List<Employee> employees = List.of(employee1, employee2);
+
+        Page<Employee> expectedPage =
+                new PageImpl<>(employees, pageable, 1948);
+
+        when(employeeRepository.findByActiveTrue(pageable)).thenReturn(expectedPage);
+
+        Page<Employee> result =
+                employeeService.getActiveEmployees(pageable);
+
+        assertEquals(2, result.getContent().size());
+        assertEquals(1948, result.getTotalElements());
     }
 
     // builds the request body: same department, same email, given salary

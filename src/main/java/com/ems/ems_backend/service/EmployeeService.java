@@ -13,7 +13,9 @@ import com.ems.ems_backend.repository.DepartmentRepository;
 import com.ems.ems_backend.repository.EmployeeRepository;
 import com.ems.ems_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +65,10 @@ public class EmployeeService {
 
     public List<Employee> getAllEmployees() {
         return employeeRepository.findByActiveTrue();
+    }
+
+    public Page<Employee> getActiveEmployees(Pageable pageable) {
+        return employeeRepository.findByActiveTrue(pageable);
     }
 
     public List<Employee> getInactiveEmployees() { return employeeRepository.findByActiveFalse(); }
